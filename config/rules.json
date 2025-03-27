@@ -1,0 +1,14 @@
+[
+    {
+      "name": "Large ICMP Packet",
+      "condition": "pkt['protocol'] == 'ICMP' and pkt['packet_size'] > 1000",
+      "priority": "HIGH",
+      "type": "CRITICAL"
+    },
+    {
+      "name": "Suspicious Port Activity",
+      "condition": "pkt['dst_port'] in [4444, 6667]",
+      "priority": "MEDIUM",
+      "type": "WARNING"
+    }
+  ]

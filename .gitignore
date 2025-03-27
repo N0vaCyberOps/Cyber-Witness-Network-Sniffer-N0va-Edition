@@ -1,12 +1,6 @@
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
 .env
-.venv/
 *.onnx
-models/
-.idea/
-.vscode/
-.DS_Store
-/deploykit/
+alerts_fallback.ndjson
+venv/
