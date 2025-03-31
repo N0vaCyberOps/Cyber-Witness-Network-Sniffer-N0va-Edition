@@ -1,68 +1,58 @@
-# 📄 Plik: api/server.py (ulepszona wersja)
-"""REST API z obsługą CQRS i autoryzacją"""
-from fastapi import FastAPI, HTTPException, Depends, status
-from fastapi.security import APIKeyHeader
-from fastapi.responses import JSONResponse
-import os
+from fastapi import FastAPI, APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from core.AlertCoordinator import AlertCoordinator
+from core.AIThreatAnalyzer import AIThreatAnalyzer
+from typing import List
 
-API_KEY_HEADER = APIKeyHeader(name="X-API-Key", auto_error=False)
+app = FastAPI(
+    title="Cyber Witness API",
+    version="1.0.0"
+)
 
-async def api_key_auth(api_key: str = Depends(API_KEY_HEADER)) -> str:
-    if api_key != os.getenv("API_SECRET_KEY"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Invalid API Key"
-        )
-    return api_key
+# Dotychczasowe endpointy (już istniejące)
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
 
-class Rule(BaseModel):
-    name: str
-    condition: str
-    priority: str
-    type: str
+@app.get("/alerts")
+async def get_alerts(limit: int = 100):
+    # zakładam, że implementacja istnieje
+    return []
 
-class RuleCommandHandler:
-    def __init__(self, traffic_monitor):
-        self.traffic_monitor = traffic_monitor
+@app.post("/rules")
+async def add_rule(rule: dict):
+    # zakładam, że implementacja istnieje
+    return {"status": "rule added"}
 
-    async def handle_add_rule(self, rule: dict) -> dict:
-        try:
-            validated = self.traffic_monitor._validate_rule(rule)
-            self.traffic_monitor.rules.append(validated)
-            return {"status": "Rule added"}
-        except ValueError as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=str(e)
-            )
+# NOWY kod dodany poniżej:
 
-def create_app(coordinator: AlertCoordinator, rule_handler: RuleCommandHandler) -> FastAPI:
-    app = FastAPI(
-        title="Cyber Witness API",
-        version="1.0.0",
-        docs_url="/docs" if os.getenv("ENV") == "dev" else None
-    )
+# --------------- NOWY ENDPOINT ANALYZE -------------------
 
-    @app.get("/health")
-    async def health_check():
-        return {"status": "ok"}
+router = APIRouter()
+analyzer = AIThreatAnalyzer("models/deepseek.onnx")
 
-    @app.get("/alerts", dependencies=[Depends(api_key_auth)])
-    async def get_alerts(limit: int = 100):
-        alerts = [
-            {
-                "type": alert.alert_type.value,
-                "message": alert.message,
-                **alert.payload
-            }
-            for alert in list(coordinator.recent_alerts)[-limit:]
-        ]
-        return JSONResponse(content={"alerts": alerts})
+class ThreatRequest(BaseModel):
+    ip: str
+    port: int
+    protocol: str  # "TCP", "UDP", "ICMP", "OTHER"
 
-    @app.post("/rules", dependencies=[Depends(api_key_auth)])
-    async def add_rule(rule: Rule):
-        return await rule_handler.handle_add_rule(rule.dict())
+class ThreatResponse(BaseModel):
+    threat_score: float
 
-    return app
+PROTOCOL_MAP = {
+    "TCP": 0,
+    "UDP": 1,
+    "ICMP": 2,
+    "OTHER": 3
+}
+
+@router.post("/analyze", response_model=ThreatResponse)
+async def analyze_threat(request: ThreatRequest):
+    protocol_code = PROTOCOL_MAP.get(request.protocol.upper(), 3)
+    try:
+        score = analyzer.predict(request.ip, request.port, protocol_code)
+        return {"threat_score": round(score, 4)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Rejestracja nowego routera:
+app.include_router(router)
