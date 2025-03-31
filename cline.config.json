@@ -1,0 +1,20 @@
+{
+    "models": {
+      "default": "openrouter/claude-3-sonnet",
+      "fallback": "openrouter/deepseek-coder",
+      "fast": "openrouter/mistral-7b",
+      "code": "openrouter/grok-1",
+      "analyzer": "openrouter/qwen-plus"
+    },
+    "tools": {
+      "terminal": true,
+      "file-editor": true,
+      "browser": true
+    },
+    "project": {
+      "name": "N0va Ecosystem Core",
+      "namespace": "n0va",
+      "autoApproveSafeChanges": true
+    }
+  }
+  
